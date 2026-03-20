@@ -171,10 +171,59 @@ const poster = await generatePoster('Chinese ancient town in landscape painting 
 // Can be used as <img src={URL.createObjectURL(poster)} />
 ```
 
+## CLI Startup
+
+If UI2V is not running, start it from command line:
+
+**Windows**:
+```bash
+# Foreground
+"C:\Program Files\UI2V\UI2V.exe"
+
+# Background
+start "" "C:\Program Files\UI2V\UI2V.exe"
+```
+
+**macOS**:
+```bash
+open -a UI2V
+```
+
+**Linux**:
+```bash
+ui2v &
+```
+
+### Auto-Start Pattern
+
+Before calling the API, check if UI2V is running and start if needed:
+
+```bash
+# Check and start on Windows
+curl -s http://127.0.0.1:5125/video -X POST -d '{"prompt":"test"}' 2>/dev/null || start "" "C:\Program Files\UI2V\UI2V.exe"
+```
+
+```python
+import subprocess
+import requests
+import time
+
+def ensure_ui2v_running():
+    try:
+        requests.get("http://127.0.0.1:5125/", timeout=1)
+    except:
+        # Start UI2V on Windows
+        subprocess.Popen(['C:\\Program Files\\UI2V\\UI2V.exe'])
+        time.sleep(3)  # Wait for startup
+
+ensure_ui2v_running()
+```
+
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
+| Connection refused | Start UI2V app first, or use auto-start pattern above |
 | 429 Busy | Wait for current generation to complete, or cancel current task |
 | Slow generation | Lower quality parameter, or reduce width/height |
 | Style not applied | Verify style name is correct, use `styles:list` to query available styles |
