@@ -1,230 +1,153 @@
 ---
 name: ui2v-api
-description: Use when calling ui2v HTTP API for video/poster generation, integrating with external apps, or understanding ui2v's generative capabilities
+description: Use when generating videos or posters with the local UI2V HTTP API. Covers text-to-video, text-to-poster, custom dimensions, quality tiers, optional styles, and the async job flow used by this workstation where `POST /video` and `POST /poster` can return job metadata that must be followed via `/status/:requestId` and `/result/:requestId`.
 ---
 
-# UI2V HTTP API
+# UI2V HTTP API Skill
 
-## Overview
+Use the local UI2V server at `http://127.0.0.1:5125`.
 
-**UI2V** is an AI-powered video and poster generation tool. Users input text prompts to generate high-quality animated videos or static poster images.
+## Use this skill for
 
-### Core Capabilities
+- Text-to-video generation
+- Text-to-poster generation
+- Custom dimensions
+- Optional styles
+- Async job submission, polling, and result download on this workstation
+- Reusable PowerShell scripts instead of ad hoc one-off terminal code
 
-| Feature | Description |
-|---------|-------------|
-| 🎬 **Video Generation** | Text-to-animation video, supports MP4/WebM formats |
-| 🖼️ **Poster Generation** | Text-to-static image, supports PNG/JPG formats |
-| 🎨 **Style System** | Preset styles or custom styles |
-| 📐 **Custom Dimensions** | Customizable width/height |
-| ⚡ **Quality Tiers** | 5 quality levels: low → cinema |
+## Output types
 
-### Use Cases
+UI2V supports two primary generation modes:
 
-- Product promotional video generation
-- Social media content creation
-- Dynamic poster design
-- Educational demonstration animations
-- Rapid prototype visualization
+- Video generation: animated output such as `mp4` or `webm`
+- Poster generation: static output such as `png` or `jpg`
 
-## HTTP API Endpoints
+Both flows can behave asynchronously on this workstation. Do not assume posters are always synchronous just because they are images.
 
-**Base URL**: `http://127.0.0.1:5125`
+## Use this workflow
 
-**Request Limit**: Max body size 2MB
+1. Ensure UI2V is reachable at `http://127.0.0.1:5125`.
+2. Treat `GET /` returning `404` as acceptable. On this machine that still means the service is up.
+3. Submit either `POST /video` or `POST /poster` with the correct payload.
+4. Inspect the submit response:
+   - If the content type is `video/*` or `image/*`, save the stream directly.
+   - If the response body is JSON and contains `requestId`, switch to async polling.
+5. Poll `GET /status/:requestId` until the job reaches `completed` or `failed`.
+6. When status becomes `completed`, download `GET /result/:requestId` to the final output path with the expected extension.
+7. If status becomes `failed`, report the full status payload and retry only the failed job.
 
----
+## Use the bundled resources
 
-### POST /video
+- `scripts/ui2v-common.ps1`: Shared submit, poll, download, and liveness helpers used by both entry scripts.
+- `scripts/invoke-ui2v-video.ps1`: Thin entry script for one video request.
+- `scripts/invoke-ui2v-poster.ps1`: Thin entry script for one poster request.
+- `references/async-media-flow.md`: Detailed async response shapes, endpoints, and operational notes.
 
-Generate animated video.
+Prefer the scripts over ad hoc terminal one-liners whenever the task involves actual delivery work.
 
-**Request Body**:
+## Request shapes
 
-```typescript
+Video request body:
+
+```json
 {
-  prompt: string,                    // Required - describes the video content to generate
-  format?: "mp4" | "webm",          // Output format, default "mp4"
-  width?: number,                   // Video width (pixels)
-  height?: number,                  // Video height (pixels)
-  quality?: "low" | "medium" | "high" | "ultra" | "cinema",  // Quality, default "medium"
-  style?: string                    // Style name (optional)
+  "prompt": "Educational motion graphic with floating equations",
+  "format": "mp4",
+  "width": 1080,
+  "height": 1080,
+  "quality": "medium",
+  "style": "optional-style-name"
 }
 ```
 
-**Response Headers**:
+Poster request body:
 
-| Header | Description |
-|--------|-------------|
-| `X-UI2V-Animation-Id` | Generated animation ID |
-| `X-UI2V-Format` | Output format |
-| `Content-Type` | `video/mp4` or `video/webm` |
-| `Content-Length` | File size (bytes) |
-
-**Status Codes**:
-
-| Code | Meaning | Scenario |
-|------|---------|----------|
-| 200 | Success | Video generated, returns file stream |
-| 400 | Bad Request | Missing prompt parameter |
-| 413 | Payload Too Large | Request body exceeds 2MB |
-| 429 | Busy | Currently processing another request |
-| 500 | Server Error | Internal error |
-
-**Example**:
-
-```bash
-curl -X POST http://127.0.0.1:5125/video \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "A glowing sphere rotating in darkness", "quality": "high"}' \
-  --output video.mp4
-```
-
----
-
-### POST /poster
-
-Generate static poster image.
-
-**Request Body**:
-
-```typescript
+```json
 {
-  prompt: string,               // Required - describes the poster content to generate
-  format?: "png" | "jpg",      // Output format, default "png"
-  width?: number,              // Width (pixels)
-  height?: number,             // Height (pixels)
-  style?: string               // Style name (optional)
+  "prompt": "Educational poster with books, globe, and bold title area",
+  "format": "png",
+  "width": 1080,
+  "height": 1080,
+  "style": "optional-style-name"
 }
 ```
 
-**Response Headers**:
+## Quality tiers
 
-| Header | Description |
-|--------|-------------|
-| `X-UI2V-Poster-Id` | Generated poster ID |
-| `Content-Type` | `image/png` or `image/jpeg` |
-| `Content-Length` | File size (bytes) |
+- `low`: fastest preview quality
+- `medium`: default balance for day-to-day generation
+- `high`: stronger final quality
+- `ultra`: slower, higher fidelity
+- `cinema`: slowest, premium video output when available
 
-**Example**:
+Only video requests use `quality`. Poster requests do not require it.
 
-```bash
-curl -X POST http://127.0.0.1:5125/poster \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Cyberpunk style city nightscape", "format": "png"}' \
-  --output poster.png
-```
+## Handle statuses deliberately
 
----
+- `queued`: The task is accepted and waiting. Keep polling.
+- `generating`: Rendering or export is still in progress. Keep polling.
+- `completed`: Download from `/result/:requestId`.
+- `failed`: Stop, capture the error payload, and decide whether to resubmit.
 
-## Quality Levels
+## Work with both media types safely
 
-| Level | Speed | Quality | Use Case |
-|-------|-------|---------|----------|
-| `low` | Fastest | Basic | Quick preview, prototype validation |
-| `medium` | Fast | Standard | Daily use (default) |
-| `high` | Medium | HD | Formal output |
-| `ultra` | Slow | Ultra HD | High-quality requirements |
-| `cinema` | Slowest | Cinema-grade | Professional production |
+- If an `.mp4` file is only a few hundred bytes, it is probably JSON job metadata that was mistakenly written straight to disk. Open the file, parse the `requestId`, then poll and download the real result.
+- If a `.png` or `.jpg` file is only a few hundred bytes, handle it the same way. It may contain queued-job JSON rather than image bytes.
+- If the status payload contains `Export already in progress for this project`, too many jobs reached export at the same time. Re-run the failed request after another export finishes, or serialize the batch.
+- If the API returns `429 Busy`, wait and retry rather than changing prompts or dimensions.
+- If polling times out, show the last status JSON in the final response so the user can see what stalled.
 
-## Integration Examples
+## Batch safely
 
-### Python
+For multiple videos or posters, prefer sequential execution. Submitting several jobs at once can work, but downloading and exporting them in parallel is less reliable on this machine.
 
-```python
-import requests
+Video batch example:
 
-def generate_video(prompt, quality="medium"):
-    response = requests.post(
-        "http://127.0.0.1:5125/video",
-        json={"prompt": prompt, "quality": quality},
-        stream=True
-    )
-    if response.status_code == 200:
-        return response.content  # Video binary data
-    raise Exception(f"Error: {response.status_code}")
+```powershell
+$jobs = @(
+  @{ Prompt = "Math lesson motion graphics"; Output = ".\\math.mp4" },
+  @{ Prompt = "Science lab motion graphics"; Output = ".\\science.mp4" }
+)
 
-# Usage
-video_data = generate_video("Particles converging into company logo")
-with open("output.mp4", "wb") as f:
-    f.write(video_data)
-```
-
-### JavaScript
-
-```javascript
-async function generatePoster(prompt, format = 'png') {
-  const response = await fetch('http://127.0.0.1:5125/poster', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, format })
-  });
-
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-  const blob = await response.blob();
-  return blob;
+foreach ($job in $jobs) {
+  powershell -ExecutionPolicy Bypass -File .\skills\ui2v-api\scripts\invoke-ui2v-video.ps1 `
+    -Prompt $job.Prompt `
+    -OutputFile $job.Output `
+    -Width 1080 `
+    -Height 1080 `
+    -Quality medium `
+    -Overwrite
 }
-
-// Usage
-const poster = await generatePoster('Chinese ancient town in landscape painting style');
-// Can be used as <img src={URL.createObjectURL(poster)} />
 ```
 
-## CLI Startup
+Poster batch example:
 
-If UI2V is not running, start it from command line:
+```powershell
+$jobs = @(
+  @{ Prompt = "Back to school poster"; Output = ".\\poster-1.png" },
+  @{ Prompt = "STEM workshop poster"; Output = ".\\poster-2.png" }
+)
 
-**Windows**:
-```bash
-# Foreground
-"C:\Program Files\UI2V\UI2V.exe"
-
-# Background
-start "" "C:\Program Files\UI2V\UI2V.exe"
+foreach ($job in $jobs) {
+  powershell -ExecutionPolicy Bypass -File .\skills\ui2v-api\scripts\invoke-ui2v-poster.ps1 `
+    -Prompt $job.Prompt `
+    -OutputFile $job.Output `
+    -Width 1080 `
+    -Height 1080 `
+    -Format png `
+    -Overwrite
+}
 ```
 
-**macOS**:
-```bash
-open -a UI2V
+## Start UI2V if needed
+
+If the API is not reachable, start the desktop app first.
+
+```powershell
+Start-Process "C:\Program Files\UI2V\UI2V.exe"
 ```
 
-**Linux**:
-```bash
-ui2v &
-```
+## Poster note
 
-### Auto-Start Pattern
-
-Before calling the API, check if UI2V is running and start if needed:
-
-```bash
-# Check and start on Windows
-curl -s http://127.0.0.1:5125/video -X POST -d '{"prompt":"test"}' 2>/dev/null || start "" "C:\Program Files\UI2V\UI2V.exe"
-```
-
-```python
-import subprocess
-import requests
-import time
-
-def ensure_ui2v_running():
-    try:
-        requests.get("http://127.0.0.1:5125/", timeout=1)
-    except:
-        # Start UI2V on Windows
-        subprocess.Popen(['C:\\Program Files\\UI2V\\UI2V.exe'])
-        time.sleep(3)  # Wait for startup
-
-ensure_ui2v_running()
-```
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Connection refused | Start UI2V app first, or use auto-start pattern above |
-| 429 Busy | Wait for current generation to complete, or cancel current task |
-| Slow generation | Lower quality parameter, or reduce width/height |
-| Style not applied | Verify style name is correct, use `styles:list` to query available styles |
-| Video too large | Lower quality or reduce dimensions |
+Poster generation is a first-class capability of this skill, not a footnote. Keep its request format, output extension, and downstream usage distinct from video generation, but handle its async job lifecycle with the same care.
