@@ -1,41 +1,73 @@
-# Skills
+# 🎬 illli-studio/skills
 
-Local Codex skills stored with this project.
+> Claude Code / Hermes Agent Skills Collection
 
-## Available skills
-
-### ui2v-api
-
-Generate videos and posters through the local UI2V HTTP API.
-
-Highlights:
-
-- Covers both video generation and poster generation.
-- Handles the async `POST /video` and `POST /poster` workflows observed on this workstation.
-- Polls `GET /status/:requestId` until completion.
-- Downloads the final asset from `GET /result/:requestId`.
-- Documents export-conflict retries for batch generation.
-- Includes reusable PowerShell helper scripts with a shared common layer.
-
-[View skill](./ui2v-api/SKILL.md)
-
+## 📦 Skills
 
 ### video-transcript
 
-Extract transcripts from video platforms (Bilibili, YouTube, Douyin) by downloading audio and running MiMo ASR.
+**从视频平台提取字幕/文案的 AI Skill**
 
-Highlights:
+支持 Bilibili、YouTube、抖音，自动下载音频并用 MiMo ASR 语音识别转文字。
 
-- Supports Bilibili, YouTube, and Douyin (抖音).
-- Uses MiMo ASR API for speech-to-text.
-- Handles long videos with audio chunking.
-- Includes proxy configuration for yt-dlp.
-- Multiple fallback methods for YouTube transcripts.
+| 平台 | 方案 | 说明 |
+|------|------|------|
+| **Bilibili** | Bilibili API + MiMo ASR | 直接调用内部 API 下载音频流 |
+| **YouTube** | saveanyyoutube.com / yt-dlp | 多种 fallback 方案，应对反爬 |
+| **抖音** | SnapAny + MiMo ASR | 绕过抖音反爬，支持短视频 |
 
-[View skill](./video-transcript/SKILL.md)
+**亮点：**
+- 🎯 长视频自动分片，避免 ASR 截断
+- 🔄 多平台 fallback，总有方案能用
+- 🌐 代理配置支持（mihomo）
+- 📝 直接发视频链接即可，无需手动操作
 
-## Install
-
+**安装：**
 ```bash
 npx skills add illli-studio/skills
 ```
+
+[查看完整文档 →](./video-transcript/SKILL.md)
+
+---
+
+## 🚀 快速开始
+
+### 方式一：npx 一键安装
+```bash
+npx skills add illli-studio/skills
+```
+
+### 方式二：手动复制
+```bash
+cd ~/.hermes/skills/media
+git clone https://github.com/illli-studio/skills.git illli-skills
+cp -r illli-skills/video-transcript .
+rm -rf illli-skills
+```
+
+## 📁 项目结构
+
+```
+skills/
+├── README.md
+└── video-transcript/
+    ├── SKILL.md                    # 主文档
+    └── references/
+        ├── douyin-transcript-workflow.md    # 抖音转录工作流
+        ├── youtube-transcript-browser-act.md # YouTube 浏览器方案
+        └── youtube-transcript-io-workaround.md # YouTube fallback
+```
+
+## 🔧 依赖
+
+- `ffmpeg` — 音频格式转换（macOS 预装）
+- MiMo ASR API Key — 语音识别（可选，用于 Bilibili/抖音）
+
+## 📄 License
+
+MIT
+
+---
+
+*Built with ❤️ by [illli-studio](https://github.com/illli-studio)*
