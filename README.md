@@ -19,6 +19,21 @@ Highlights:
 
 [View skill](./ui2v-api/SKILL.md)
 
+
+### video-transcript
+
+Extract transcripts from video platforms (Bilibili, YouTube, Douyin) by downloading audio and running MiMo ASR.
+
+Highlights:
+
+- Supports Bilibili, YouTube, and Douyin (抖音).
+- Uses MiMo ASR API for speech-to-text.
+- Handles long videos with audio chunking.
+- Includes proxy configuration for yt-dlp.
+- Multiple fallback methods for YouTube transcripts.
+
+[View skill](./video-transcript/SKILL.md)
+
 ## Install
 
 ```bash
