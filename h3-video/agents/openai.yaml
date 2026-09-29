@@ -1,0 +1,4 @@
+interface:
+  display_name: "H3 Video"
+  short_description: "Plan short films and generate H3 clips"
+  default_prompt: "Use $h3-video to develop a short film, create a shot plan, or generate approved H3 video clips."
