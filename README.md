@@ -50,6 +50,26 @@ npx skills add illli-studio/skills
 
 ---
 
+### h3-video
+
+**AI 短片策划与 H3 视频生成**
+
+从故事梗概、角色/场景连续性、逐秒分镜，到逐镜头视频提示词与成片检查。支持单条视频生成，也可按已确认的镜头计划生成多个片段。
+
+```text
+使用 $h3-video，把这个故事发展成短片方案和逐镜头生成计划。
+```
+
+[查看完整文档 →](./h3-video/SKILL.md)
+
+安装：
+
+```bash
+npx skills add illli-studio/skills --skill h3-video
+```
+
+---
+
 ## 🚀 快速开始
 
 ### 方式一：npx 一键安装
@@ -82,13 +102,19 @@ skills/
         ├── douyin-transcript-workflow.md    # 抖音转录工作流
         ├── youtube-transcript-browser-act.md # YouTube 浏览器方案
         └── youtube-transcript-io-workaround.md # YouTube fallback
-└── wechat-article-studio/
+├── wechat-article-studio/
     ├── SKILL.md                    # 主文档
     ├── agents/openai.yaml
     ├── references/
     ├── templates/
     ├── scripts/
-    └── assets/
+    ├── assets/
+└── h3-video/
+    ├── SKILL.md                    # H3 提示词、API 和短片流程
+    ├── agents/openai.yaml
+    └── references/
+        ├── h3-prompt-format.md
+        └── short-film-workflow.md
 ```
 
 ## 🔧 依赖
